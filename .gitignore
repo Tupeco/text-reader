@@ -1,0 +1,11 @@
+node_modules/
+dist/
+# Fetched by `npm run assets` (wasm runtimes copied from node_modules, models downloaded).
+public/ocr/
+public/models/
+public/piper/
+public/tesseract/
+public/tessdata/
+public/bench-models/
+bench/last-results.json
+*.part

@@ -1,0 +1,35 @@
+{
+  "ocr": {
+    "label": "PaddleOCR PP-OCRv6 small",
+    "archive": "https://github.com/xushengfeng/eSearch-OCR/releases/download/4.0.0/ppocr_v6_small.zip",
+    "det": "ppocr6_small_det.onnx",
+    "rec": "ppocr6_small_rec.onnx",
+    "dict": "dic.txt",
+    "optimizeSpace": false
+  },
+  "translation": [
+    {
+      "id": "en-fi",
+      "label": "Finnish",
+      "source": "en",
+      "target": "fi",
+      "repo": "Xenova/opus-mt-en-fi",
+      "files": [
+        "config.json",
+        "generation_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "onnx/encoder_model_quantized.onnx",
+        "onnx/decoder_model_merged_quantized.onnx"
+      ]
+    }
+  ],
+  "piper": [
+    {
+      "id": "fi_FI-harri-medium",
+      "label": "Finnish – Harri (Piper)",
+      "lang": "fi",
+      "path": "fi/fi_FI/harri/medium/fi_FI-harri-medium"
+    }
+  ]
+}

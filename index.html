@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#2d2417" />
+    <meta name="description" content="Photograph board game cards, read the text offline, translate it and hear it aloud." />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Card Reader</title>
+  </head>
+  <body>
+    <header class="top">
+      <h1>Card Reader</h1>
+      <button type="button" id="update" class="chip" hidden>Update ready — reload</button>
+      <button type="button" id="open-settings" class="icon-btn" aria-label="Settings">⚙</button>
+    </header>
+
+    <main>
+      <section id="empty" class="empty">
+        <p class="big">📷</p>
+        <p>Take a photo of a card. The text is read on this device, translated if you like, and read aloud.</p>
+        <p class="muted">Several photos are combined in order. Mark a photo as <em>same card</em> to merge two shots of one card, e.g. to get around glare.</p>
+      </section>
+
+      <section id="photos" class="photos" aria-label="Photos"></section>
+
+      <section id="texts" class="texts" hidden>
+        <div class="tabs" role="tablist">
+          <button type="button" role="tab" id="tab-source" aria-selected="true">Recognized</button>
+          <button type="button" role="tab" id="tab-target" aria-selected="false">Translation</button>
+          <span class="spacer"></span>
+          <button type="button" id="retranslate" class="chip" hidden>Translate again</button>
+        </div>
+        <textarea id="source" spellcheck="false" aria-labelledby="tab-source"></textarea>
+        <textarea id="target" spellcheck="false" aria-labelledby="tab-target" hidden></textarea>
+      </section>
+
+      <div id="status" class="status" role="status" hidden>
+        <span id="status-text"></span>
+        <progress id="status-progress"></progress>
+      </div>
+    </main>
+
+    <nav class="actions">
+      <button type="button" id="camera" class="action">📷<span>Camera</span></button>
+      <label class="action">🖼<span>Gallery</span><input type="file" id="gallery" accept="image/*" multiple hidden /></label>
+      <input type="file" id="capture" accept="image/*" capture="environment" hidden />
+      <button type="button" id="speak" class="action primary" disabled>▶<span>Read aloud</span></button>
+    </nav>
+
+    <dialog id="crop-dialog"></dialog>
+
+    <dialog id="settings">
+      <form method="dialog" class="settings">
+        <h2>Settings</h2>
+
+        <fieldset>
+          <legend>Translation</legend>
+          <label class="switch"><input type="checkbox" name="translate" /> Translate before reading aloud</label>
+          <label>Into <select name="model"></select></label>
+          <label>Before translating — replace (one <code>from = to</code> per line)
+            <textarea name="glossaryBefore" rows="3"></textarea></label>
+          <label>After translating — replace
+            <textarea name="glossaryAfter" rows="3"></textarea></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Voice</legend>
+          <label>Engine
+            <select name="voiceEngine">
+              <option value="auto">Automatic (phone voice, else Piper)</option>
+              <option value="system">Phone's own voices</option>
+              <option value="piper">Piper (built in, needs download)</option>
+            </select></label>
+          <label>Phone voice <select name="systemVoice"></select></label>
+          <label>Speed <input type="range" name="rate" min="0.6" max="1.6" step="0.1" /></label>
+          <label class="switch"><input type="checkbox" name="autoSpeak" /> Read aloud automatically after a photo</label>
+          <button type="button" id="test-voice">Test voice</button>
+          <p class="muted" id="voice-note"></p>
+        </fieldset>
+
+        <fieldset>
+          <legend>Photos</legend>
+          <label class="switch"><input type="checkbox" name="flattenLighting" /> Correct uneven lighting and glare halos</label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Offline downloads</legend>
+          <p class="muted">Text recognition is always available offline. Download these once on Wi-Fi to translate and use the built-in voice without a connection.</p>
+          <div id="packs"></div>
+          <p class="muted" id="storage"></p>
+        </fieldset>
+
+        <div class="row">
+          <span class="spacer"></span>
+          <button value="close" class="primary">Done</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
