@@ -26,9 +26,9 @@ const isolate: WorkboxPlugin = {
 addPlugins([isolate]);
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
-
 const scope = new URL(self.registration.scope).pathname;
+// Opening piper/COPYING or piper/SOURCE.txt from the About section is a navigation; serve the file, not the app.
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [new RegExp(`^${scope}piper/`)] }));
 registerRoute(
   ({ url, sameOrigin }) => sameOrigin && (url.pathname.startsWith(`${scope}models/`) || url.pathname.startsWith(`${scope}piper/`)),
   new CacheFirst({ cacheName: MODEL_CACHE, plugins: [new CacheableResponsePlugin({ statuses: [200] }), isolate] }),

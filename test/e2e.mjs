@@ -89,6 +89,18 @@ await page.goto(base);
 await page.waitForFunction(() => navigator.serviceWorker?.controller && self.crossOriginIsolated, null, { timeout: 120_000 });
 console.log('  controlled by service worker, crossOriginIsolated = true');
 
+step('About links open the GPL text and source notice, not the app');
+await page.click('#open-settings');
+for (const [href, expect] of [['piper/COPYING', 'GNU GENERAL PUBLIC LICENSE'], ['piper/SOURCE.txt', 'rhasspy/espeak-ng']]) {
+  const [tab] = await Promise.all([context.waitForEvent('page'), page.click(`#settings a[href="${href}"]`)]);
+  await tab.waitForLoadState();
+  const text = await tab.evaluate(() => document.body.innerText);
+  console.log(`  ${href}: ${text.includes(expect) ? 'ok' : 'WRONG CONTENT'}`);
+  if (!text.includes(expect)) fail(`${href} did not serve the expected file`);
+  await tab.close();
+}
+await page.click('#settings button[value=close]');
+
 step('Translation off: OCR a clean card');
 await page.evaluate(() => {
   localStorage.setItem('card-reader:settings', JSON.stringify({ translate: false, voiceEngine: 'piper' }));

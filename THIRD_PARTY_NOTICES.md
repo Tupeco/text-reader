@@ -30,8 +30,14 @@ marked *not stated*, no license was found for that exact artifact; check upstrea
 
 ### Note on eSpeak NG
 
-The Piper phonemizer includes eSpeak NG, which is GPL-3.0-or-later. A deployment that serves
-`piper/piper_phonemize.wasm` and `.data` distributes GPL-covered files, so those files come with the
-GPL's terms (including making their corresponding source available). The rest of the app loads them at
-runtime as separate files and does not link them into its own bundle. OCR, translation and system-voice
-speech work without them.
+The Piper phonemizer includes eSpeak NG, which is GPL-3.0-or-later. The app treats it as a separate
+program. It is loaded at runtime from its own files rather than bundled. Each use starts a fresh instance
+with command-line arguments, and the app reads its output. OCR, translation and system-voice speech work
+without it.
+
+A deployment that serves `piper/piper_phonemize.wasm` and `.data` distributes GPL-covered files.
+`npm run assets` therefore places the GPL text (`piper/COPYING`, from `licenses/GPL-3.0.txt`) and
+pointers to the corresponding source (`piper/SOURCE.txt`, from `licenses/espeak-ng-SOURCE.txt`) next to
+them. The app's Settings → About section links to both. The binaries come unmodified from
+`@diffusionstudio/piper-wasm` 1.0.0. That build doesn't record the source commits it used, so
+`SOURCE.txt` names the repositories and build steps instead.

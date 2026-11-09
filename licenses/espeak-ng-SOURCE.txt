@@ -1,0 +1,21 @@
+piper_phonemize.wasm, piper_phonemize.data and piper_phonemize.mjs
+====================================================================
+
+These files are the Piper phonemizer compiled to WebAssembly. They include eSpeak NG and its
+espeak-ng-data, which are licensed under the GNU General Public License, version 3 or later (see
+COPYING in this directory). They run as a separate program: the app starts them with command-line
+arguments and reads their output. The rest of Card Reader is MIT-licensed.
+
+The binaries are taken unmodified from the npm package @diffusionstudio/piper-wasm 1.0.0
+(piper_phonemize.mjs is its piper_phonemize.js with one export line appended). Corresponding source:
+
+  eSpeak NG (Rhasspy fork)       https://github.com/rhasspy/espeak-ng
+  piper-phonemize (wasm fork)    https://github.com/wide-video/piper-phonemize
+  Build steps                    https://github.com/diffusion-studio/piper-wasm (README)
+                                 https://github.com/wide-video/piper-wasm
+  Upstream eSpeak NG             https://github.com/espeak-ng/espeak-ng
+  Upstream piper-phonemize       https://github.com/rhasspy/piper-phonemize (MIT)
+
+The published build clones the latest revision of each repository and does not record which
+commits were used. If you need the exact source for these binaries and cannot get it from the
+links above, open an issue in this project's repository.

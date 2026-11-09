@@ -100,6 +100,9 @@ await writeFile(join(pub, 'piper/piper_phonemize.mjs'), `${glue}\nexport default
 console.log('wrote   public/piper/piper_phonemize.mjs');
 await copy(join(piperBuild, 'piper_phonemize.wasm'), join(pub, 'piper/piper_phonemize.wasm'));
 await copy(join(piperBuild, 'piper_phonemize.data'), join(pub, 'piper/piper_phonemize.data'));
+// The phonemizer contains GPL-3.0-or-later eSpeak NG: serve the license and source pointers with it.
+await copy(join(root, 'licenses/GPL-3.0.txt'), join(pub, 'piper/COPYING'));
+await copy(join(root, 'licenses/espeak-ng-SOURCE.txt'), join(pub, 'piper/SOURCE.txt'));
 
 if (skipDownloads) {
   console.log('skipping model downloads');
