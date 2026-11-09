@@ -9,3 +9,4 @@ public/tessdata/
 public/bench-models/
 bench/last-results.json
 *.part
+.env

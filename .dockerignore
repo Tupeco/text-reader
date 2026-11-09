@@ -1,0 +1,12 @@
+# Keep the build context small and reproducible: dependencies and models are fetched in the image.
+.git
+node_modules
+/dist
+public/ocr
+public/models
+public/piper
+public/bench-models
+bench/last-results.json
+*.part
+.env
+# phonemizer/dist/ is deliberately NOT ignored: a local build is used if present.

@@ -1,0 +1,12 @@
+# Card Reader behind your own reverse proxy (which must terminate HTTPS).
+# Settings come from .env (copy .env.example): HOST_PORT is the host-side port the proxy talks to.
+services:
+  card-reader:
+    build:
+      context: .
+      args:
+        BASE_PATH: ${BASE_PATH:-/}
+    image: card-reader:latest
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8477}:8080"

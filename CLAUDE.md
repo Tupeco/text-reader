@@ -17,6 +17,7 @@ npm test                  # vitest unit tests (src/*.test.ts)
 npx vitest run src/merge.test.ts     # one test file; add -t "<name>" for a single test
 npm run build             # tsc (type check, no emit) + vite build into dist/
 npm run preview           # serve dist/ with the service worker on :4173
+docker compose up -d --build   # production image (nginx, deploy/), host port from .env HOST_PORT (8477)
 ./test/run-e2e.sh         # full e2e from a fresh checkout: npm ci, assets, unit tests, build, preview, Playwright
 ```
 
@@ -61,6 +62,10 @@ static host works. The first visit reloads once to become isolated.
 - Translation models (`public/models/`) and Piper files (`public/piper/`) are cached on first use in
   `MODEL_CACHE` with CacheFirst, or ahead of time via "Offline downloads" in settings (`src/offline.ts`).
 - The precache glob in `vite.config.ts` must keep excluding `models/**` and `piper/**`.
+- Any server for `dist/` (the Docker image uses `deploy/nginx.conf`) must return real 404s for missing
+  files, never `index.html`, and must answer Range requests under `models/` and `piper/` with 206. With
+  gzip, nginx ignores Range, and the full response then races the real download in the service worker
+  cache.
 
 **Model catalog.** `models.json` is the single source of truth for which models exist. It is read by
 `scripts/fetch-assets.mjs` (downloads) and `src/catalog.ts` (app; also builds the offline-download

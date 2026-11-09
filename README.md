@@ -74,6 +74,25 @@ For a sub-path (e.g. GitHub Pages project sites) build with `BASE_PATH=/repo-nam
 Some model files are larger than 25 MB, so Cloudflare Pages (25 MiB per-file limit) cannot host them.
 Netlify, GitHub Pages, or any plain web server can.
 
+#### Docker Compose behind a reverse proxy
+
+```sh
+cp .env.example .env        # HOST_PORT (default 8477), BASE_PATH (default /)
+docker compose up -d --build
+```
+
+The image builds the app, downloading the models during the build, and serves it with nginx on
+`HOST_PORT`. The container runs as a non-root user. Your reverse proxy must:
+- **terminate HTTPS** and forward to `http://<host>:HOST_PORT`;
+- **forward paths unchanged**: for `BASE_PATH=/cards/`, send `/cards/…` as is, not stripped;
+- **pass `Range` requests and response headers through untouched**, including the `Cross-Origin-*` ones
+  (most proxies do by default);
+- **not limit response size**. The largest file is about 63 MB, and the full set of model files is about
+  230 MB.
+
+`deploy/nginx.conf` returns real 404s for missing files and serves model files uncompressed so Range
+requests work. Both matter for the in-browser model loader.
+
 ### Adding languages
 
 Edit `models.json` and re-run `npm run assets`:
