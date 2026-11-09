@@ -3,7 +3,7 @@ import { cameraSupported, takePhoto } from './camera';
 import { catalog } from './catalog';
 import { editPhoto, type Edit } from './crop';
 import { detectGlare, hasGlare, loadPhoto, toCanvas, transform, type GlareReport } from './image';
-import { recognize, translateSentences, warmupOcr } from './ml';
+import { recognize, setKeepModelsLoaded, translateSentences, warmupOcr } from './ml';
 import { downloadPack, isReady, packStatus, registerServiceWorker, removePack, storageEstimate } from './offline';
 import { load, save, type Settings } from './settings';
 import * as speech from './speech';
@@ -26,6 +26,7 @@ type Photo = {
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 
 let settings = load();
+setKeepModelsLoaded(settings.keepModelsLoaded);
 let photos: Photo[] = [];
 let nextPhotoId = 1;
 /** Text the current translation was made from; a mismatch means it is stale. */
@@ -462,6 +463,7 @@ function openSettings() {
   field<HTMLInputElement>('rate').value = String(settings.rate);
   field<HTMLInputElement>('autoSpeak').checked = settings.autoSpeak;
   field<HTMLInputElement>('flattenLighting').checked = settings.flattenLighting;
+  field<HTMLInputElement>('keepModelsLoaded').checked = settings.keepModelsLoaded;
   void fillVoices();
   void renderPacks();
   ui.settings.showModal();
@@ -479,6 +481,7 @@ function readSettings(): Settings {
     rate: Number(field<HTMLInputElement>('rate').value),
     autoSpeak: field<HTMLInputElement>('autoSpeak').checked,
     flattenLighting: field<HTMLInputElement>('flattenLighting').checked,
+    keepModelsLoaded: field<HTMLInputElement>('keepModelsLoaded').checked,
     systemVoices: { ...settings.systemVoices },
   };
   const voice = field<HTMLSelectElement>('systemVoice').value;
@@ -493,6 +496,7 @@ form.addEventListener('change', (e) => {
   save(settings);
   const name = (e.target as HTMLInputElement).name;
   if (name === 'translate' || name === 'model') void fillVoices();
+  if (name === 'keepModelsLoaded') setKeepModelsLoaded(settings.keepModelsLoaded);
   if (name === 'flattenLighting') {
     for (const p of photos) {
       p.lines = undefined;

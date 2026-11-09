@@ -1,8 +1,9 @@
 // Hosts every model (OCR, translation, Piper TTS) in one worker so they share a single
 // onnxruntime-web instance. Jobs run one at a time; ORT's wasm backend is not re-entrant.
 // OCR stays loaded; the translator and the Piper voice are the big ones (hundreds of MB once
-// loaded), so only one of them is kept at a time. wasm memory never shrinks, but memory freed by
-// one model is reused by the next, so the peak is OCR + the larger of the two rather than all three.
+// loaded), so by default only one of them is kept at a time. wasm memory never shrinks, but memory
+// freed by one model is reused by the next, so the peak is OCR + the larger of the two rather than
+// all three. With the "keep models loaded" setting both stay loaded: faster, more memory.
 import * as ort from 'onnxruntime-web/wasm';
 import ortWasm from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
 import ortGlue from 'onnxruntime-web/ort-wasm-simd-threaded.mjs?url';
@@ -45,6 +46,9 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/** Set by the 'config' request (the "keep models loaded" setting). */
+let keepModelsLoaded = false;
+
 async function fetchProgress(path: string, id: number, label: string): Promise<ArrayBuffer> {
   const res = await fetch(url(path));
   if (!res.ok || !res.body) throw new Error(`Could not load ${path} (${res.status}). Is it downloaded?`);
@@ -69,6 +73,8 @@ async function fetchProgress(path: string, id: number, label: string): Promise<A
 
 type Paddle = Awaited<ReturnType<typeof initPaddle>>;
 let paddle: Promise<Paddle> | undefined;
+/** Request id of the OCR job running now; the recognizer's per-line callback is set once at init. */
+let ocrJob = 0;
 
 function loadPaddle(id: number) {
   paddle ??= (async () => {
@@ -81,7 +87,14 @@ function loadPaddle(id: number) {
     return initPaddle({
       ort: ort as never,
       det: { input: new Uint8Array(det) },
-      rec: { input: new Uint8Array(rec), decodeDic: dict, optimize: { space: m.optimizeSpace } },
+      rec: {
+        input: new Uint8Array(rec),
+        decodeDic: dict,
+        optimize: { space: m.optimizeSpace },
+        // Called after each detected text line is recognized.
+        on: (index: number, _line: unknown, total: number) =>
+          post({ type: 'progress', id: ocrJob, label: 'Reading text', loaded: index + 1, total }),
+      },
     });
   })();
   paddle.catch(() => (paddle = undefined));
@@ -90,10 +103,13 @@ function loadPaddle(id: number) {
 
 async function ocr(id: number, image: ImageData, flatten: boolean): Promise<OcrLine[]> {
   const p = await loadPaddle(id);
-  post({ type: 'progress', id, label: 'Reading text', loaded: 0, total: 0 });
+  ocrJob = id;
+  // Detection is one model run with no progress of its own; recognition reports each line.
+  post({ type: 'progress', id, label: 'Finding text', loaded: 0, total: 0 });
   // Detection + raw recognition (per-character confidence); reading order is rebuilt in layout.ts
   // because glare can split a printed line into boxes that esearch's own layout treats as columns.
   const boxes = await p.det(flatten ? flattenLighting(image) : image);
+  post({ type: 'progress', id, label: 'Reading text', loaded: 0, total: boxes.length });
   const raw = (await p.recRaw(boxes)) as unknown as RawLine[];
   return layoutRows(fragmentsFromRaw(raw));
 }
@@ -121,7 +137,7 @@ function loadTranslator(id: number, model: TranslationModel) {
 async function translate(id: number, modelId: string, sentences: string[]): Promise<string[]> {
   const model = catalog.translation.find((m) => m.id === modelId);
   if (!model) throw new Error(`Unknown translation model ${modelId}`);
-  await unloadVoices();
+  if (!keepModelsLoaded) await unloadVoices();
   const t = await loadTranslator(id, model);
   const out: string[] = [];
   for (const [i, s] of sentences.entries()) {
@@ -195,7 +211,7 @@ async function phonemize(id: number, text: string, espeakVoice: string): Promise
 async function speakPiper(id: number, voiceId: string, text: string, rate: number) {
   const voice = catalog.piper.find((v) => v.id === voiceId);
   if (!voice) throw new Error(`Unknown voice ${voiceId}`);
-  await unloadTranslators();
+  if (!keepModelsLoaded) await unloadTranslators();
   const { config, session } = await loadVoice(id, voice);
   const ids = await phonemize(id, text, config.espeak.voice);
   const { noise_scale, length_scale, noise_w } = config.inference;
@@ -241,6 +257,10 @@ self.onmessage = (e: MessageEvent<Request>) => {
           post({ type: 'result', id: req.id, value: { pcm, sampleRate } }, [pcm.buffer]);
           break;
         }
+        case 'config':
+          keepModelsLoaded = req.keepModelsLoaded;
+          post({ type: 'result', id: req.id, value: null });
+          break;
         case 'warmup':
           if (req.what === 'ocr') await loadPaddle(req.id);
           post({ type: 'result', id: req.id, value: null });

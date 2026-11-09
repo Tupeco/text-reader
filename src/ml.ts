@@ -5,7 +5,8 @@ export type Request =
   | { type: 'ocr'; id: number; image: ImageData; flatten: boolean }
   | { type: 'translate'; id: number; model: string; sentences: string[] }
   | { type: 'piper'; id: number; voice: string; text: string; rate: number }
-  | { type: 'warmup'; id: number; what: 'ocr' };
+  | { type: 'warmup'; id: number; what: 'ocr' }
+  | { type: 'config'; id: number; keepModelsLoaded: boolean };
 
 export type Response =
   | { type: 'progress'; id: number; label: string; loaded: number; total: number }
@@ -18,6 +19,8 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onPr
 
 let worker: Worker | undefined;
 let nextId = 1;
+/** Sent to every new worker, so a worker restarted after a crash gets the same settings. */
+let config = { keepModelsLoaded: false };
 const pending = new Map<number, Pending>();
 
 function getWorker() {
@@ -41,6 +44,8 @@ function getWorker() {
       worker?.terminate();
       worker = undefined;
     };
+    // Id 0 is never pending, so the reply is ignored. Messages are handled in order.
+    worker.postMessage({ type: 'config', id: 0, ...config } satisfies Request);
   }
   return worker;
 }
@@ -65,6 +70,12 @@ export function translateSentences(model: string, sentences: string[], onProgres
 
 export function synthesize(voice: string, text: string, rate: number, onProgress?: Progress) {
   return call<{ pcm: Float32Array; sampleRate: number }>({ type: 'piper', voice, text, rate }, onProgress);
+}
+
+/** Keep the translator and the Piper voice loaded together (faster, more memory). */
+export function setKeepModelsLoaded(keepModelsLoaded: boolean) {
+  config = { keepModelsLoaded };
+  if (worker) worker.postMessage({ type: 'config', id: 0, ...config } satisfies Request);
 }
 
 export function warmupOcr() {

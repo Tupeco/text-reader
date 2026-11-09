@@ -1,9 +1,12 @@
 // End-to-end check of the production build: install, OCR a card photo, translate, speak with Piper,
 // then go offline and do it again from the service worker cache.
 // Usage: npm run build && npm run preview -- --port 4173 & node test/e2e.mjs http://localhost:4173 [chromium-path]
+import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 
 const [base = 'http://localhost:4173', exe = process.env.CHROMIUM_PATH] = process.argv.slice(2);
+// E2E_KEEP_LOADED=1 runs with the "keep translator and voice loaded" setting on.
+const keepLoaded = process.env.E2E_KEEP_LOADED === '1';
 const step = (msg) => console.log(`\n▶ ${msg}`);
 const fail = (msg) => {
   console.error(`✗ ${msg}`);
@@ -74,12 +77,33 @@ const waitForText = async (selector, minLength, timeout = 300_000) => {
   return page.$eval(selector, (el) => el.value);
 };
 
-/** Page memory incl. workers (Chromium, cross-origin isolated pages only). */
+/** Resident memory of the browser this script started (all descendants of this process), in MB. */
+const browserRss = () => {
+  try {
+    const rows = execFileSync('ps', ['-eo', 'pid=,ppid=,rss='], { encoding: 'utf8' })
+      .trim().split('\n').map((l) => l.trim().split(/\s+/).map(Number));
+    const mine = new Set([process.pid]);
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const [pid, ppid] of rows) if (mine.has(ppid) && !mine.has(pid)) mine.add(pid), (grew = true);
+    }
+    mine.delete(process.pid);
+    return Math.round(rows.filter(([pid]) => mine.has(pid)).reduce((n, [, , rss]) => n + rss, 0) / 1024);
+  } catch {
+    return undefined;
+  }
+};
+
+/** Page memory incl. workers where Chromium supports measuring it, else the browser's resident memory. */
 const memory = async (label) => {
   const mb = await page
     .evaluate(() => performance.measureUserAgentSpecificMemory?.().then((m) => Math.round(m.bytes / 1e6)))
     .catch(() => undefined);
-  if (mb) console.log(`  memory after ${label}: ${mb} MB`);
+  if (mb) console.log(`  memory after ${label}: ${mb} MB (page)`);
+  else {
+    const rss = browserRss();
+    if (rss) console.log(`  memory after ${label}: ${rss} MB (browser RSS)`);
+  }
 };
 
 const statusError = () => page.$eval('#status', (el) => (el.classList.contains('error') && !el.hidden ? el.textContent.trim() : ''));
@@ -102,8 +126,18 @@ for (const [href, expect] of [['piper/COPYING', 'GNU GENERAL PUBLIC LICENSE'], [
 await page.click('#settings button[value=close]');
 
 step('Translation off: OCR a clean card');
-await page.evaluate(() => {
-  localStorage.setItem('card-reader:settings', JSON.stringify({ translate: false, voiceEngine: 'piper' }));
+await page.evaluate((keepModelsLoaded) => {
+  localStorage.setItem('card-reader:settings', JSON.stringify({ translate: false, voiceEngine: 'piper', keepModelsLoaded }));
+}, keepLoaded);
+// Record every status message, to check that OCR reports its progress.
+await page.addInitScript(() => {
+  self.statusLog = [];
+  addEventListener('DOMContentLoaded', () => {
+    const text = document.querySelector('#status-text');
+    const bar = document.querySelector('#status-progress');
+    new MutationObserver(() => self.statusLog.push(`${text.textContent} [${bar.hasAttribute('value') ? bar.value : '…'}]`))
+      .observe(document.querySelector('#status'), { subtree: true, childList: true, characterData: true, attributes: true });
+  });
 });
 await page.reload();
 await page.waitForFunction(() => self.crossOriginIsolated);
@@ -116,6 +150,11 @@ if (process.env.E2E_UNTIL === 'ocr') {
   process.exit(process.exitCode ?? 0);
 }
 await memory('OCR');
+const statusLog = await page.evaluate(() => self.statusLog);
+const reading = statusLog.filter((l) => l.startsWith('Reading text'));
+console.log(`  OCR progress: ${[...new Set(statusLog.filter((l) => /^(Finding|Reading) text/.test(l)))].join(' → ')}`);
+if (!statusLog.some((l) => l.startsWith('Finding text'))) fail('OCR did not report "Finding text"');
+if (!reading.some((l) => !l.endsWith('[…]') && !l.endsWith('[0]'))) fail('OCR did not report per-line progress');
 for (const word of ['Storm Front', 'extra action', 'settlements lose 2 resources']) {
   if (!source.includes(word)) fail(`recognized text is missing "${word}"`);
 }
@@ -138,7 +177,26 @@ await page.waitForFunction(() => document.querySelector('#speak span').textConte
 await page.waitForFunction(() => document.querySelector('#speak span').textContent === 'Read aloud', null, { timeout: 300_000 });
 console.log(`  finished speaking in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 if (await statusError()) fail(`speech error: ${await statusError()}`);
-await memory('Piper (translator unloaded)');
+await memory(`Piper (translator ${keepLoaded ? 'kept loaded' : 'unloaded'})`);
+
+step(`Translate and read again (models ${keepLoaded ? 'kept loaded' : 'swapped'})`);
+const before = await page.$eval('#target', (el) => el.value);
+await page.click('#tab-source');
+await page.fill('#source', `${await page.$eval('#source', (el) => el.value)}\nDraw a card.`);
+t0 = Date.now();
+await page.click('#retranslate');
+await page.waitForFunction((prev) => {
+  const v = document.querySelector('#target').value;
+  return v && v !== prev;
+}, before, { timeout: 300_000 });
+console.log(`  translated again in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+t0 = Date.now();
+await page.click('#speak');
+await page.waitForFunction(() => document.querySelector('#speak span').textContent === 'Stop', null, { timeout: 30_000 });
+await page.waitForFunction(() => document.querySelector('#speak span').textContent === 'Read aloud', null, { timeout: 300_000 });
+console.log(`  read aloud again in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+if (await statusError()) fail(`error: ${await statusError()}`);
+await memory('second round');
 
 step('Glare: two shots of the same card are merged');
 await page.click('#photos .photo button[aria-label="Remove photo"]');

@@ -12,6 +12,8 @@ export type Settings = {
   rate: number;
   autoSpeak: boolean;
   flattenLighting: boolean;
+  /** Keep the translator and the Piper voice loaded together instead of swapping them. */
+  keepModelsLoaded: boolean;
   glossaryBefore: string;
   glossaryAfter: string;
 };
@@ -27,6 +29,7 @@ export const defaults: Settings = {
   rate: 1,
   autoSpeak: false,
   flattenLighting: false,
+  keepModelsLoaded: false,
   glossaryBefore: '# Fix OCR or protect game terms before translating, e.g.\n# Stonesaga = Stonesaga\n',
   glossaryAfter: '# Fix translated terms before they are read aloud, e.g.\n# maine = kunnia\n',
 };
