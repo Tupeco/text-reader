@@ -103,3 +103,16 @@ src/offline.ts     service worker registration and optional downloads
 src/sw.ts          service worker (precache, model cache, isolation headers)
 models.json        which models to fetch and use
 ```
+
+## License and credits
+
+MIT, see [LICENSE](LICENSE). The models and runtimes the app downloads and serves have their own
+licenses, listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Note that the optional Piper
+phonemizer includes eSpeak NG, which is GPL-3.0-or-later.
+
+### AI assistance
+
+This project was written with [Claude Code](https://claude.com/claude-code), Anthropic's AI coding
+assistant, which contributed to every commit. Commits from `71c3513` onward carry a
+`Co-Authored-By: Claude …` trailer; the two earlier ones do not. The maintainer directs the work and is
+responsible for what is merged.
