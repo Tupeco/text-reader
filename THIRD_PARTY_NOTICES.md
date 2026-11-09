@@ -27,6 +27,16 @@ marked *not stated*, no license was found for that exact artifact; check upstrea
 | [eSpeak NG](https://github.com/espeak-ng/espeak-ng), as the [Rhasspy fork](https://github.com/rhasspy/espeak-ng), compiled into `piper_phonemize.wasm`, with `espeak-ng-data` packed into `piper_phonemize.data` | GPL-3.0-or-later |
 | [Workbox](https://github.com/GoogleChrome/workbox) (bundled into the service worker) | MIT |
 
+## Optional server components
+
+These are not part of the app the browser downloads. The `llm` compose profile pulls them on the
+deployer's machine.
+
+| Component | License |
+|---|---|
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) server image (`ghcr.io/ggml-org/llama.cpp:server`) | MIT |
+| Default model [Llama-Poro-2-8B-Instruct](https://huggingface.co/LumiOpen/Llama-Poro-2-8B-Instruct) by LumiOpen ([GGUF build](https://huggingface.co/mradermacher/Llama-Poro-2-8B-Instruct-GGUF)) | Llama 3.3 Community License |
+
 ### Note on eSpeak NG
 
 The Piper phonemizer includes eSpeak NG, which is GPL-3.0-or-later. The app treats it as a separate

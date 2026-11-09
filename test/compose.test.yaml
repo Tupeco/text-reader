@@ -1,0 +1,13 @@
+# Test-only override: a mock DeepL for the API. Used by test/run-e2e-compose.sh:
+#   docker compose -f compose.yaml -f test/compose.test.yaml up -d --build
+services:
+  api:
+    environment:
+      DEEPL_API_KEY: test-key:fx
+      DEEPL_API_URL: http://mock-deepl:8090
+    depends_on: [mock-deepl]
+  mock-deepl:
+    image: node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+    command: ["node", "/test/mock-deepl.mjs", "8090"]
+    volumes:
+      - ./test/mock-deepl.mjs:/test/mock-deepl.mjs:ro   # relative to the project (repo root)

@@ -18,6 +18,7 @@ npx vitest run src/merge.test.ts     # one test file; add -t "<name>" for a sing
 npm run build             # tsc (type check, no emit) + vite build into dist/
 npm run preview           # serve dist/ with the service worker on :4173
 docker compose up -d --build   # production image (nginx, deploy/), host port from .env HOST_PORT (8477)
+./test/run-e2e-compose.sh # e2e against the compose stack incl. translation API (mock DeepL)
 ./test/run-e2e.sh         # full e2e from a fresh checkout: npm ci, assets, unit tests, build, preview, Playwright
 ```
 
@@ -77,6 +78,16 @@ offline use breaks. Always build asset paths with `url()` from `catalog.ts`. It 
 GPL-3.0-or-later eSpeak NG. The MIT app keeps it a separate program: it is loaded at runtime from its own
 files, started per call with command-line arguments, and only its output is read. Don't bundle it into the
 app's JS or call into it more closely without discussing licensing (see THIRD_PARTY_NOTICES.md).
+
+**Optional translation API** (`server/`, plain Node ESM with `// @ts-check`, no dependencies; type-checked
+by `tsc -p server/tsconfig.json` in `npm run build`, tested by `server/server.test.mjs`). Compose service
+`api`; nginx forwards `<BASE_PATH>api/` to it (resolved per request, so the app image also runs alone).
+Engines: `deepl.mjs` (v3 glossary from `glossary/<src>-<tgt>.tsv`), `llm.mjs` (OpenAI-compatible chat
+completions, offered only while its `/health` answers; compose profile `llm` runs llama.cpp). The app
+(`src/online.ts`, `translate()` in `main.ts`) sends whole paragraphs to server engines and falls back to
+the on-device model on any failure. The endpoint is public, so `limits.mjs` caps requests per client and
+characters per day. `test/run-e2e-compose.sh` runs the e2e against the compose stack with a mock DeepL
+(`test/mock-deepl.mjs`, `test/compose.test.yaml`, `E2E_ONLINE=1`).
 
 **Text pipeline** (main thread, `src/main.ts` orchestrates):
 - photo → `image.ts` (loading, glare detection, optional lighting flattening) → worker OCR

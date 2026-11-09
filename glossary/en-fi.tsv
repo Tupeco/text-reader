@@ -1,0 +1,38 @@
+# Board game terms, English → Finnish, one "english<TAB>finnish" pair per line ("#" starts a comment).
+# Used by the server-side engines: as a DeepL glossary (DeepL inflects the Finnish term to fit the
+# sentence) and in the language model's prompt. Lowercase base forms. DeepL applies an entry wherever the
+# English phrase occurs, so avoid words with other everyday meanings ("die", "turn"): use phrases.
+deck	pakka
+draw deck	nostopakka
+discard pile	poistopakka
+from your hand	kädestäsi
+into your hand	käteesi
+draw a card	nosta kortti
+draw cards	nosta kortteja
+discard	poista
+shuffle	sekoita
+faceup	kuvapuoli ylöspäin
+facedown	kuvapuoli alaspäin
+reveal	paljasta
+round	kierros
+your turn	vuorosi
+start of your turn	vuorosi alussa
+end of your turn	vuorosi lopussa
+action	toiminto
+player	pelaaja
+first player	aloituspelaaja
+victory points	voittopisteet
+resource	resurssi
+token	merkki
+dice	nopat
+roll the die	heitä noppaa
+roll a die	heitä noppaa
+exhaust	käännä
+exhausted	käännetty
+readies it	oikaisee sen
+worker	työläinen
+game board	pelilauta
+region	alue
+adjacent	viereinen
+renown	maine
+hero	sankari

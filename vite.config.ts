@@ -8,6 +8,8 @@ const isolation = {
   'Cross-Origin-Embedder-Policy': 'require-corp',
 };
 
+const apiProxy = process.env.API_URL ? { '/api': { target: process.env.API_URL, changeOrigin: true } } : undefined;
+
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   resolve: {
@@ -15,8 +17,9 @@ export default defineConfig({
     // Everything here runs on the plain wasm backend, so share one runtime.
     alias: [{ find: /^onnxruntime-web\/webgpu$/, replacement: 'onnxruntime-web/wasm' }],
   },
-  server: { headers: isolation },
-  preview: { headers: isolation },
+  // API_URL=http://localhost:8787 forwards /api to a local translation API (PORT=8787 npm run api).
+  server: { headers: isolation, proxy: apiProxy },
+  preview: { headers: isolation, proxy: apiProxy },
   worker: { format: 'es' },
   build: { target: 'es2022' },
   plugins: [

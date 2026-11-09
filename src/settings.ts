@@ -4,6 +4,8 @@ export type Settings = {
   translate: boolean;
   /** Translation model id from models.json, e.g. "en-fi". */
   model: string;
+  /** "auto" (best server engine when online, else on-device), "device", or a server engine id. */
+  translationEngine: string;
   /** Source language spoken when translation is off. */
   sourceLang: string;
   voiceEngine: 'auto' | 'system' | 'piper';
@@ -23,6 +25,7 @@ const KEY = 'card-reader:settings';
 export const defaults: Settings = {
   translate: true,
   model: 'en-fi',
+  translationEngine: 'auto',
   sourceLang: 'en',
   voiceEngine: 'auto',
   systemVoices: {},

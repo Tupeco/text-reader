@@ -2,13 +2,14 @@
 
 A web app that reads board game cards (Mythwind, Stonesaga, …) aloud: take one or more photos, the text is
 recognized **on the device**, optionally translated (English → Finnish by default), and spoken.
-After the first load it works fully offline. No servers or cloud APIs are used. Every model runs in the
-browser as WebAssembly.
+After the first load it works fully offline: every model runs in the browser as WebAssembly. A server
+can optionally offer better online translation (DeepL, or a language model it hosts); the device
+translates whenever that isn't available.
 
 | Step | Engine | Size |
 |---|---|---|
 | Text recognition | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) PP-OCRv5 mobile (ONNX) via [esearch-ocr](https://github.com/xushengfeng/eSearch-OCR) | 21 MB, always cached |
-| Translation | [Opus-MT en→fi](https://huggingface.co/Helsinki-NLP/opus-mt-en-fi) via [Transformers.js](https://github.com/huggingface/transformers.js) | 113 MB, optional download |
+| Translation | [Opus-MT en→fi](https://huggingface.co/Helsinki-NLP/opus-mt-en-fi) via [Transformers.js](https://github.com/huggingface/transformers.js); optionally DeepL or a self-hosted language model through the server | 113 MB, optional download |
 | Speech | The phone's own voices (Web Speech API), or [Piper](https://github.com/rhasspy/piper) `fi_FI-harri-medium` | 0 MB / 81 MB optional |
 | Runtime | [onnxruntime-web](https://onnxruntime.ai/) (wasm, SIMD, threads), shared by all three | 14 MB |
 
@@ -94,6 +95,29 @@ The image builds the app, downloading the models during the build, and serves it
 `deploy/nginx.conf` returns real 404s for missing files and serves model files uncompressed so Range
 requests work. Both matter for the in-browser model loader.
 
+#### Online translation (optional)
+
+The on-device model is small, and board game terms trip it up ("Draw 2 cards" → "Piirrä 2 korttia").
+The compose stack includes a small translation API (`server/`) that the app uses when it offers an
+engine. The app's Settings → Translation → Engine chooses "Automatic" (the server's first engine when
+online, else the device), "On this device", or a specific engine. If a server engine fails, the device
+translates and the app says so.
+
+- **DeepL**: set `DEEPL_API_KEY` in `.env` (a free API key works) and restart. Card text is then sent
+  to DeepL. A glossary of board game terms (`glossary/en-fi.tsv`) is created in your DeepL account and
+  updated when the file changes.
+- **A language model on this machine**: `docker compose --profile llm up -d --build` adds llama.cpp
+  with the model in `LLM_HF_MODEL` (default: Llama-Poro-2-8B-Instruct, a Finnish-specialised 8B model,
+  Q4: about 5 GB download and 6–8 GB RAM). The first start downloads the model; the engine is offered
+  once the model has loaded. Card text stays on your server. A Raspberry Pi is too small for this.
+  To use a language model server elsewhere (e.g. Ollama), set `LLM_URL` and `LLM_MODEL` instead.
+
+The API is public through your proxy and spends your quota, so it limits requests per device
+(`TRANSLATE_REQUESTS_PER_HOUR`) and characters per day (`TRANSLATE_CHARS_PER_DAY`). See
+`.env.example` for all settings. `test/run-e2e-compose.sh` tests the whole stack with a mock DeepL.
+
+For development: `PORT=8787 DEEPL_API_KEY=… npm run api`, then `API_URL=http://localhost:8787 npm run dev`.
+
 ### Adding languages
 
 Edit `models.json` and re-run `npm run assets`:
@@ -127,8 +151,11 @@ src/text.ts        OCR cleanup, glossary, sentence splitting (unit tested)
 src/ml.worker.ts   OCR, translation and Piper inference on one shared onnxruntime instance
 src/speech.ts      Web Speech API and Piper playback
 src/offline.ts     service worker registration and optional downloads
+src/online.ts      client for the optional translation API
 src/sw.ts          service worker (precache, model cache, isolation headers)
 models.json        which models to fetch and use
+server/            optional translation API (DeepL, OpenAI-compatible language models), no dependencies
+glossary/          board game terms per language pair, used by the server engines
 ```
 
 ## License and credits

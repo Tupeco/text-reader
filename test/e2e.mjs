@@ -46,7 +46,9 @@ context.on('requestfailed', (r) => {
   const why = r.failure()?.errorText;
   if (why !== 'net::ERR_ABORTED') errors.push(`request failed: ${r.method()} ${r.url()} (${why})`);
 });
-context.on('response', (r) => r.status() >= 400 && errors.push(`HTTP ${r.status()}: ${r.url()}`));
+/** URLs whose HTTP errors a step provokes on purpose. */
+const expectedHttpErrors = new Set();
+context.on('response', (r) => r.status() >= 400 && !expectedHttpErrors.has(r.url()) && errors.push(`HTTP ${r.status()}: ${r.url()}`));
 
 const photoPage = await context.newPage();
 const clean = await cardPhoto(photoPage, 0);
@@ -127,7 +129,8 @@ await page.click('#settings button[value=close]');
 
 step('Translation off: OCR a clean card');
 await page.evaluate((keepModelsLoaded) => {
-  localStorage.setItem('card-reader:settings', JSON.stringify({ translate: false, voiceEngine: 'piper', keepModelsLoaded }));
+  // On-device translation for the main flow; online engines get their own step (E2E_ONLINE=1).
+  localStorage.setItem('card-reader:settings', JSON.stringify({ translate: false, voiceEngine: 'piper', keepModelsLoaded, translationEngine: 'device' }));
 }, keepLoaded);
 // Record every status message, to check that OCR reports its progress.
 await page.addInitScript(() => {
@@ -197,6 +200,46 @@ await page.waitForFunction(() => document.querySelector('#speak span').textConte
 console.log(`  read aloud again in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 if (await statusError()) fail(`error: ${await statusError()}`);
 await memory('second round');
+
+if (process.env.E2E_ONLINE === '1') {
+  step('Online translation through the API (mock DeepL)');
+  await page.click('#open-settings');
+  await page.waitForFunction(() => [...document.querySelectorAll('select[name=translationEngine] option')].some((o) => o.value === 'deepl'), null, { timeout: 10_000 });
+  const options = await page.$$eval('select[name=translationEngine] option', (os) => os.map((o) => o.textContent));
+  console.log(`  engines offered: ${options.join(' | ')}`);
+  await page.selectOption('select[name=translationEngine]', 'deepl');
+  await page.click('#settings button[value=close]');
+  const changed = async (before) => {
+    await page.waitForFunction((prev) => {
+      const v = document.querySelector('#target').value;
+      return v && v !== prev;
+    }, before, { timeout: 120_000 });
+    return page.$eval('#target', (el) => el.value);
+  };
+  await page.click('#tab-source');
+  await page.fill('#source', 'Draw a card.\n\nShuffle the deck.');
+  await page.click('#retranslate');
+  const online = await changed(await page.$eval('#target', (el) => el.value));
+  const by = await page.$eval('#translated-by', (el) => el.textContent);
+  console.log(`  ${JSON.stringify(online)} ${by}`);
+  if (online !== '[DeepL] Draw a card.\n\n[DeepL] Shuffle the deck.') fail('online translation did not come from the mock DeepL, one request per paragraph');
+  if (by !== 'by DeepL') fail(`translated-by says "${by}"`);
+
+  // A failing server engine falls back to the device.
+  expectedHttpErrors.add(new URL('api/translate', base).href);
+  await page.route('**/api/translate', (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"The DeepL quota for this server is used up"}' }));
+  await page.click('#tab-source');
+  await page.fill('#source', 'Draw a card.');
+  await page.click('#retranslate');
+  await page.waitForFunction(() => document.querySelector('#translated-by').textContent.includes('failed'), null, { timeout: 120_000 });
+  const fallback = await page.$eval('#target', (el) => el.value);
+  console.log(`  fallback: ${JSON.stringify(fallback)} ${await page.$eval('#translated-by', (el) => el.textContent)}`);
+  if (fallback.includes('[DeepL]') || !fallback.trim()) fail('no on-device fallback when the server engine failed');
+  await page.unroute('**/api/translate');
+  await page.click('#open-settings');
+  await page.selectOption('select[name=translationEngine]', 'device');
+  await page.click('#settings button[value=close]');
+}
 
 step('Glare: two shots of the same card are merged');
 await page.click('#photos .photo button[aria-label="Remove photo"]');

@@ -30,6 +30,7 @@
           <button type="button" role="tab" id="tab-source" aria-selected="true">Recognized</button>
           <button type="button" role="tab" id="tab-target" aria-selected="false">Translation</button>
           <span class="spacer"></span>
+          <span id="translated-by" class="muted small" hidden></span>
           <button type="button" id="retranslate" class="chip" hidden>Translate again</button>
         </div>
         <textarea id="source" spellcheck="false" aria-labelledby="tab-source"></textarea>
@@ -59,6 +60,8 @@
           <legend>Translation</legend>
           <label class="switch"><input type="checkbox" name="translate" /> Translate before reading aloud</label>
           <label>Into <select name="model"></select></label>
+          <label>Engine <select name="translationEngine"></select></label>
+          <p class="muted" id="engine-note"></p>
           <label>Before translating — replace (one <code>from = to</code> per line)
             <textarea name="glossaryBefore" rows="3"></textarea></label>
           <label>After translating — replace

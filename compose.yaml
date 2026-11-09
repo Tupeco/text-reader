@@ -1,5 +1,8 @@
-# Card Reader behind your own reverse proxy (which must terminate HTTPS).
-# Settings come from .env (copy .env.example): HOST_PORT is the host-side port the proxy talks to.
+# Card Reader behind your own reverse proxy (which must terminate HTTPS). Settings come from .env
+# (copy .env.example). Only "card-reader" publishes a port; it forwards <BASE_PATH>api/ to "api".
+#
+#   docker compose up -d --build                    app + translation API (DeepL if DEEPL_API_KEY is set)
+#   docker compose --profile llm up -d --build      also a language model on this machine (needs ~8 GB RAM)
 services:
   card-reader:
     build:
@@ -10,3 +13,46 @@ services:
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-8477}:8080"
+
+  # Online translation for the app. Offers DeepL when DEEPL_API_KEY is set and the language model while
+  # LLM_URL answers; with neither, the app translates on the device as before.
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    image: card-reader-api:latest
+    restart: unless-stopped
+    environment:
+      DEEPL_API_KEY: ${DEEPL_API_KEY:-}
+      DEEPL_API_URL: ${DEEPL_API_URL:-}
+      LLM_URL: ${LLM_URL-http://llm:8080}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_LABEL: ${LLM_LABEL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      TRANSLATE_ENGINES: ${TRANSLATE_ENGINES:-deepl,llm}
+      TRANSLATE_REQUESTS_PER_HOUR: ${TRANSLATE_REQUESTS_PER_HOUR:-120}
+      TRANSLATE_CHARS_PER_DAY: ${TRANSLATE_CHARS_PER_DAY:-50000}
+
+  # Opt-in: llama.cpp serving a GGUF model, downloaded from Hugging Face on first start into a volume.
+  llm:
+    profiles: [llm]
+    image: ghcr.io/ggml-org/llama.cpp:server@sha256:30300ecfcb7ef05dc9413867dd7d03c9ce66eef00fec3576a6a15e9bf2b0bae7
+    restart: unless-stopped
+    environment:
+      LLAMA_CACHE: /models
+    command:
+      - --hf-repo
+      - ${LLM_HF_MODEL:-mradermacher/Llama-Poro-2-8B-Instruct-GGUF:Q4_K_M}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --ctx-size
+      - "4096"
+      - --parallel
+      - "1"
+    volumes:
+      - llm-models:/models
+
+volumes:
+  llm-models:

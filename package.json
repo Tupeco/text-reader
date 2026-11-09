@@ -5,10 +5,11 @@
   "scripts": {
     "assets": "node scripts/fetch-assets.mjs",
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && tsc -p server/tsconfig.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "bench": "node bench/run.mjs"
+    "bench": "node bench/run.mjs",
+    "api": "node server/index.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.2",

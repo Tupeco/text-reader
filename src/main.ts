@@ -8,6 +8,7 @@ import { downloadPack, isReady, packStatus, registerServiceWorker, removePack, s
 import { load, save, type Settings } from './settings';
 import * as speech from './speech';
 import { mergeShots } from './merge';
+import { serverEngines, translateOnline, type ServerEngine } from './online';
 import { applyGlossary, cleanOcrText, linesToText, parseGlossary, splitSentences, type OcrLine } from './text';
 
 type Photo = {
@@ -44,6 +45,7 @@ const ui = {
   tabSource: $('#tab-source'),
   tabTarget: $('#tab-target'),
   retranslate: $('#retranslate'),
+  translatedBy: $('#translated-by'),
   status: $('#status'),
   statusText: $('#status-text'),
   statusProgress: $<HTMLProgressElement>('#status-progress'),
@@ -277,14 +279,59 @@ async function translate() {
   const model = currentModel();
   const prepared = applyGlossary(source, parseGlossary(settings.glossaryBefore));
   const paragraphs = splitSentences(prepared);
-  const flat = paragraphs.flat();
-  const out = await translateSentences(model.id, flat, (label, f) => showStatus(label, f));
-  let k = 0;
-  const translated = paragraphs.map((p) => p.map(() => out[k++]).join(' ')).join('\n\n');
+  let translated: string | undefined;
+  let by = 'this device';
+  const engine = await chooseEngine();
+  if (engine) {
+    // Server engines get whole paragraphs: more context than single sentences.
+    showStatus(`Translating with ${engine.label}`);
+    try {
+      const out = await translateOnline(engine.id, model.source, model.target, paragraphs.map((p) => p.join(' ')));
+      translated = out.join('\n\n');
+      by = engine.label;
+    } catch (err) {
+      console.warn(`${engine.label} failed, translating on this device`, err);
+      by = `this device (${engine.label} failed: ${err instanceof Error ? err.message : err})`;
+    }
+  }
+  if (translated === undefined) {
+    const out = await translateSentences(model.id, paragraphs.flat(), (label, f) => showStatus(label, f));
+    let k = 0;
+    translated = paragraphs.map((p) => p.map(() => out[k++]).join(' ')).join('\n\n');
+  }
   ui.target.value = applyGlossary(translated, parseGlossary(settings.glossaryAfter));
+  ui.translatedBy.textContent = `by ${by}`;
+  ui.translatedBy.title = ui.translatedBy.textContent;
+  ui.translatedBy.hidden = false;
   translatedFrom = ui.source.value.trim();
   showTab('target');
   renderButtons();
+}
+
+/** The server engine to use for this translation, or undefined for on-device. */
+async function chooseEngine(): Promise<ServerEngine | undefined> {
+  if (settings.translationEngine === 'device') return undefined;
+  const engines = await serverEngines();
+  if (settings.translationEngine === 'auto') return engines[0];
+  return engines.find((e) => e.id === settings.translationEngine);
+}
+
+/** Fills the engine select with what the server offers right now. */
+async function fillEngines() {
+  const select = field<HTMLSelectElement>('translationEngine');
+  const engines = await serverEngines(true);
+  const options = [
+    new Option(`Automatic (${engines[0] ? `${engines[0].label} when online` : 'this device'})`, 'auto'),
+    new Option('On this device (offline, private)', 'device'),
+    ...engines.map((e) => new Option(`${e.label} (online)`, e.id)),
+  ];
+  const chosen = settings.translationEngine;
+  if (!options.some((o) => o.value === chosen)) options.push(new Option(`${chosen} (not available now)`, chosen));
+  select.replaceChildren(...options);
+  select.value = chosen;
+  $('#engine-note').textContent = engines.length
+    ? 'Online engines send the card text to this app\'s server and its translation service. Without a connection the device translates.'
+    : 'This server offers no online translation, so the device translates.';
 }
 
 function showTab(which: 'source' | 'target') {
@@ -457,6 +504,7 @@ function openSettings() {
   const model = field<HTMLSelectElement>('model');
   model.replaceChildren(...catalog.translation.map((m) => new Option(`${m.label} (${m.source} → ${m.target})`, m.id)));
   model.value = currentModel().id;
+  void fillEngines();
   field<HTMLTextAreaElement>('glossaryBefore').value = settings.glossaryBefore;
   field<HTMLTextAreaElement>('glossaryAfter').value = settings.glossaryAfter;
   field<HTMLSelectElement>('voiceEngine').value = settings.voiceEngine;
@@ -475,6 +523,7 @@ function readSettings(): Settings {
     ...settings,
     translate: field<HTMLInputElement>('translate').checked,
     model: field<HTMLSelectElement>('model').value,
+    translationEngine: field<HTMLSelectElement>('translationEngine').value || settings.translationEngine,
     glossaryBefore: field<HTMLTextAreaElement>('glossaryBefore').value,
     glossaryAfter: field<HTMLTextAreaElement>('glossaryAfter').value,
     voiceEngine: field<HTMLSelectElement>('voiceEngine').value as Settings['voiceEngine'],
@@ -506,7 +555,7 @@ form.addEventListener('change', (e) => {
     renderPhotos();
     void processPhotos();
   }
-  if ((name === 'model' || name.startsWith('glossary')) && prev.translate) translatedFrom = '';
+  if ((name === 'model' || name === 'translationEngine' || name.startsWith('glossary')) && prev.translate) translatedFrom = '';
   if (name === 'translate') showTab(settings.translate ? 'target' : 'source');
   renderButtons();
 });

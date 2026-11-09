@@ -495,3 +495,12 @@ fieldset textarea {
   max-height: 60dvh;
   touch-action: none;
 }
+
+/* Which engine produced the translation; long failure notes are cut off (full text in the tooltip). */
+#translated-by {
+  font-size: 0.75rem;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
