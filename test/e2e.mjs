@@ -37,6 +37,13 @@ const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+// Includes requests made by workers and the service worker, which pageerror doesn't explain.
+// ERR_ABORTED is expected: Transformers.js cancels the body of its file-size probes.
+context.on('requestfailed', (r) => {
+  const why = r.failure()?.errorText;
+  if (why !== 'net::ERR_ABORTED') errors.push(`request failed: ${r.method()} ${r.url()} (${why})`);
+});
+context.on('response', (r) => r.status() >= 400 && errors.push(`HTTP ${r.status()}: ${r.url()}`));
 
 const photoPage = await context.newPage();
 const clean = await cardPhoto(photoPage, 0);

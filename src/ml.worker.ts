@@ -22,9 +22,17 @@ ort.env.wasm.wasmPaths = { mjs: new URL(ortGlue, self.location.href).href, wasm:
 ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 
 // Models are served from this origin and cached by the service worker, never fetched from a hub.
-env.allowRemoteModels = false;
+// Files are loaded through the "local" path. Before loading, Transformers.js 4.3 checks which files
+// exist (and their sizes, for progress), but skips that check for local paths that are URLs. So
+// "remote" points at the same origin: the check is answered by a one-byte Range request there.
+// With remote disabled, every file looks missing and the translation pipeline gets no tokenizer.
+// With a non-URL local path, the check becomes a full GET of each model file racing the real
+// download, and the service worker's cache writes fail.
 env.allowLocalModels = true;
 env.localModelPath = url('models/');
+env.allowRemoteModels = true;
+env.remoteHost = url('models/');
+env.remotePathTemplate = '{model}/';
 env.useBrowserCache = false;
 env.useWasmCache = false;
 
