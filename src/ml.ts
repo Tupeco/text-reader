@@ -20,7 +20,7 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onPr
 let worker: Worker | undefined;
 let nextId = 1;
 /** Sent to every new worker, so a worker restarted after a crash gets the same settings. */
-let config = { keepModelsLoaded: false };
+let config = { keepModelsLoaded: true };
 const pending = new Map<number, Pending>();
 
 function getWorker() {

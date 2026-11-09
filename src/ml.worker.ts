@@ -1,9 +1,8 @@
 // Hosts every model (OCR, translation, Piper TTS) in one worker so they share a single
 // onnxruntime-web instance. Jobs run one at a time; ORT's wasm backend is not re-entrant.
-// OCR stays loaded; the translator and the Piper voice are the big ones (hundreds of MB once
-// loaded), so by default only one of them is kept at a time. wasm memory never shrinks, but memory
-// freed by one model is reused by the next, so the peak is OCR + the larger of the two rather than
-// all three. With the "keep models loaded" setting both stay loaded: faster, more memory.
+// OCR stays loaded. By default the translator and the Piper voice stay loaded too (about 100 MB more
+// than swapping them, measured in the e2e). With "keep models loaded" turned off only one of the two
+// is kept at a time: wasm memory never shrinks, but memory freed by one model is reused by the next.
 import * as ort from 'onnxruntime-web/wasm';
 import ortWasm from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
 import ortGlue from 'onnxruntime-web/ort-wasm-simd-threaded.mjs?url';
@@ -47,7 +46,7 @@ function serial<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** Set by the 'config' request (the "keep models loaded" setting). */
-let keepModelsLoaded = false;
+let keepModelsLoaded = true;
 
 async function fetchProgress(path: string, id: number, label: string): Promise<ArrayBuffer> {
   const res = await fetch(url(path));

@@ -29,7 +29,7 @@ export const defaults: Settings = {
   rate: 1,
   autoSpeak: false,
   flattenLighting: false,
-  keepModelsLoaded: false,
+  keepModelsLoaded: true,
   glossaryBefore: '# Fix OCR or protect game terms before translating, e.g.\n# Stonesaga = Stonesaga\n',
   glossaryAfter: '# Fix translated terms before they are read aloud, e.g.\n# maine = kunnia\n',
 };

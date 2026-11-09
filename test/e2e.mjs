@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 
 const [base = 'http://localhost:4173', exe = process.env.CHROMIUM_PATH] = process.argv.slice(2);
-// E2E_KEEP_LOADED=1 runs with the "keep translator and voice loaded" setting on.
-const keepLoaded = process.env.E2E_KEEP_LOADED === '1';
+// E2E_KEEP_LOADED=0 runs with the "keep translator and voice loaded" setting off (default on).
+const keepLoaded = process.env.E2E_KEEP_LOADED !== '0';
 const step = (msg) => console.log(`\n▶ ${msg}`);
 const fail = (msg) => {
   console.error(`✗ ${msg}`);
