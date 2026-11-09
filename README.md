@@ -84,7 +84,8 @@ docker compose up -d --build
 The image builds the app, downloading the models during the build, and serves it with nginx on
 `HOST_PORT`. The container runs as a non-root user. Your reverse proxy must:
 - **terminate HTTPS** and forward to `http://<host>:HOST_PORT`;
-- **forward paths unchanged**: for `BASE_PATH=/cards/`, send `/cards/…` as is, not stripped;
+- for a sub-path, set `BASE_PATH` (e.g. `/cards/`) and rebuild. The proxy may forward `/cards/…` as is or
+  strip the prefix; both work;
 - **pass `Range` requests and response headers through untouched**, including the `Cross-Origin-*` ones
   (most proxies do by default);
 - **not limit response size**. The largest file is about 63 MB, and the full set of model files is about

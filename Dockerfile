@@ -27,7 +27,15 @@ USER nginx
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 COPY deploy/headers.conf /etc/nginx/card-reader-headers.conf
 ARG BASE_PATH=/
-COPY --from=build /app/dist /usr/share/nginx/html${BASE_PATH}
+COPY --from=build /app/dist /usr/share/nginx/html/
+# Serve the app at both / and BASE_PATH, so it works whether the reverse proxy strips the BASE_PATH
+# prefix (proxy_pass http://host:port/;) or forwards it unchanged (proxy_pass http://host:port;).
+USER root
+RUN if [ "$BASE_PATH" != / ]; then \
+      link="/usr/share/nginx/html${BASE_PATH%/}" && mkdir -p "$(dirname "$link")" \
+      && ln -s /usr/share/nginx/html "$link"; \
+    fi
+USER nginx
 EXPOSE 8080
 ENV BASE_PATH=${BASE_PATH}
 HEALTHCHECK --interval=30s --timeout=3s CMD wget -q --spider "http://127.0.0.1:8080${BASE_PATH}" || exit 1
