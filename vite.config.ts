@@ -43,7 +43,7 @@ export default defineConfig({
       injectManifest: {
         // App shell, onnxruntime and the OCR models are cached at install so OCR always works offline.
         // Translation models and Piper voices (models/, piper/) are cached on first use instead.
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,wasm}', 'ocr/*'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,webmanifest,wasm}', 'ocr/*'],
         globIgnores: ['models/**', 'piper/**', 'bench-models/**'],
         maximumFileSizeToCacheInBytes: 40 * 1024 * 1024,
       },

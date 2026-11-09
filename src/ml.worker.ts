@@ -2,6 +2,7 @@
 // onnxruntime-web instance. Jobs run one at a time; ORT's wasm backend is not re-entrant.
 import * as ort from 'onnxruntime-web/wasm';
 import ortWasm from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
+import ortGlue from 'onnxruntime-web/ort-wasm-simd-threaded.mjs?url';
 import { init as initPaddle } from 'esearch-ocr';
 import { env, pipeline, type TranslationPipeline } from '@huggingface/transformers';
 import { catalog, url, type PiperVoice, type TranslationModel } from './catalog';
@@ -10,8 +11,10 @@ import { fragmentsFromRaw, layoutRows, type RawLine } from './layout';
 import type { OcrLine } from './text';
 import type { Request, Response } from './ml';
 
-// Bundled by Vite (hashed, precached by the service worker).
-ort.env.wasm.wasmPaths = { wasm: new URL(ortWasm, self.location.href).href };
+// Both emitted by Vite as separate files (hashed, precached by the service worker). The JS glue must
+// be its own file: ORT starts its thread pool as workers running the glue's URL, and if that were this
+// bundle every thread would run this worker's code instead and never start.
+ort.env.wasm.wasmPaths = { mjs: new URL(ortGlue, self.location.href).href, wasm: new URL(ortWasm, self.location.href).href };
 // Threads need cross-origin isolation (COOP/COEP); without it ORT runs single-threaded.
 ort.env.wasm.numThreads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
 

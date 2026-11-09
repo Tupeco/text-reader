@@ -47,8 +47,23 @@ await photoPage.close();
 const upload = async (buffer, name = 'card.jpg') =>
   page.setInputFiles('#gallery', { name, mimeType: 'image/jpeg', buffer });
 
+/** Waits for text in a textarea; stops early (with the app's message) if the app shows an error. */
 const waitForText = async (selector, minLength, timeout = 300_000) => {
-  await page.waitForFunction(([s, n]) => document.querySelector(s).value.trim().length >= n, [selector, minLength], { timeout });
+  try {
+    await page.waitForFunction(
+      ([s, n]) => {
+        const status = document.querySelector('#status');
+        if (status.classList.contains('error') && !status.hidden) throw new Error(`app error: ${status.textContent.trim()}`);
+        return document.querySelector(s).value.trim().length >= n;
+      },
+      [selector, minLength],
+      { timeout, polling: 1000 },
+    );
+  } catch (err) {
+    const status = await page.$eval('#status', (el) => el.textContent.trim()).catch(() => '?');
+    console.error(`  status: ${status}\n  page errors:\n    ${errors.join('\n    ')}`);
+    throw err;
+  }
   return page.$eval(selector, (el) => el.value);
 };
 
@@ -69,6 +84,10 @@ let t0 = Date.now();
 await upload(clean);
 const source = await waitForText('#source', 40);
 console.log(`  ${((Date.now() - t0) / 1000).toFixed(1)}s:`, JSON.stringify(source));
+if (process.env.E2E_UNTIL === 'ocr') {
+  await browser.close();
+  process.exit(process.exitCode ?? 0);
+}
 for (const word of ['Storm Front', 'extra action', 'settlements lose 2 resources']) {
   if (!source.includes(word)) fail(`recognized text is missing "${word}"`);
 }
