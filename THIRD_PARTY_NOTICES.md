@@ -23,9 +23,8 @@ marked *not stated*, no license was found for that exact artifact; check upstrea
 | [onnxruntime-web](https://github.com/microsoft/onnxruntime) (bundled wasm runtime) | MIT |
 | [Transformers.js](https://github.com/huggingface/transformers.js) (`@huggingface/transformers`) | Apache-2.0 |
 | [esearch-ocr](https://github.com/xushengfeng/eSearch-OCR) | Apache-2.0 |
-| [piper-phonemize](https://github.com/rhasspy/piper-phonemize) | MIT |
-| [piper-wasm](https://github.com/diffusionstudio/piper-wasm) build (`@diffusionstudio/piper-wasm`, source of `piper_phonemize.wasm` / `.data`) | Package metadata: MIT; repository: not stated |
-| [eSpeak NG](https://github.com/espeak-ng/espeak-ng), compiled into `piper_phonemize.wasm`, with `espeak-ng-data` packed into `piper_phonemize.data` | GPL-3.0-or-later |
+| [piper-phonemize](https://github.com/rhasspy/piper-phonemize), as the [wide-video wasm fork](https://github.com/wide-video/piper-phonemize), compiled into `piper_phonemize.wasm` by `phonemizer/` | MIT |
+| [eSpeak NG](https://github.com/espeak-ng/espeak-ng), as the [Rhasspy fork](https://github.com/rhasspy/espeak-ng), compiled into `piper_phonemize.wasm`, with `espeak-ng-data` packed into `piper_phonemize.data` | GPL-3.0-or-later |
 | [Workbox](https://github.com/GoogleChrome/workbox) (bundled into the service worker) | MIT |
 
 ### Note on eSpeak NG
@@ -38,6 +37,7 @@ without it.
 A deployment that serves `piper/piper_phonemize.wasm` and `.data` distributes GPL-covered files.
 `npm run assets` therefore places the GPL text (`piper/COPYING`, from `licenses/GPL-3.0.txt`) and
 pointers to the corresponding source (`piper/SOURCE.txt`, from `licenses/espeak-ng-SOURCE.txt`) next to
-them. The app's Settings → About section links to both. The binaries come unmodified from
-`@diffusionstudio/piper-wasm` 1.0.0. That build doesn't record the source commits it used, so
-`SOURCE.txt` names the repositories and build steps instead.
+them, along with `piper/VERSIONS`, which lists the exact commits. The app's Settings → About section
+links to the license and the source notice. This project builds the binaries itself from pinned
+commits (`phonemizer/Dockerfile`), so the commits named in `SOURCE.txt` are exactly the source of what
+is served.

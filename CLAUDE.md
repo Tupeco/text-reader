@@ -10,7 +10,8 @@ deployment and how to add languages.
 
 ```sh
 npm run assets            # copy wasm runtimes + download models into public/ (~230 MB, gitignored, reused)
-npm run assets -- --skip-downloads   # only copy runtimes from node_modules
+npm run assets -- --skip-downloads   # no downloads (still uses a local phonemizer/dist/ build)
+phonemizer/build.sh       # rebuild the Piper phonemizer wasm in Docker from pinned commits (see README)
 npm run dev               # http://localhost:5173 (sends COOP/COEP headers itself)
 npm test                  # vitest unit tests (src/*.test.ts)
 npx vitest run src/merge.test.ts     # one test file; add -t "<name>" for a single test
@@ -66,6 +67,11 @@ static host works. The first visit reloads once to become isolated.
 "packs"). A translation entry's `files` list must contain every file Transformers.js will load, or
 offline use breaks. Always build asset paths with `url()` from `catalog.ts`. It resolves against
 `BASE_URL`, which is set by `BASE_PATH` for sub-path deploys, and works in both the window and workers.
+
+**GPL boundary.** The Piper phonemizer (`piper/piper_phonemize.*`, built by `phonemizer/`) contains
+GPL-3.0-or-later eSpeak NG. The MIT app keeps it a separate program: it is loaded at runtime from its own
+files, started per call with command-line arguments, and only its output is read. Don't bundle it into the
+app's JS or call into it more closely without discussing licensing (see THIRD_PARTY_NOTICES.md).
 
 **Text pipeline** (main thread, `src/main.ts` orchestrates):
 - photo → `image.ts` (loading, glare detection, optional lighting flattening) → worker OCR

@@ -1,6 +1,7 @@
-// Copies wasm runtimes from node_modules and downloads model files into public/,
-// so the built app is fully self-hosted and never contacts a CDN at runtime.
-// Usage: node scripts/fetch-assets.mjs [--skip-downloads]
+// Downloads the models and the Piper phonemizer into public/, so the built app is fully self-hosted
+// and never contacts a CDN at runtime.
+// Usage: node scripts/fetch-assets.mjs [--skip-downloads]   (with it, only local files are copied)
+import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import { copyFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -11,7 +12,6 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pub = join(root, 'public');
-const nm = join(root, 'node_modules');
 const catalog = JSON.parse(await readFile(join(root, 'models.json'), 'utf8'));
 const skipDownloads = process.argv.includes('--skip-downloads');
 
@@ -41,6 +41,12 @@ async function download(url, to) {
   await pipeline(Readable.fromWeb(res.body), createWriteStream(tmp));
   await rename(tmp, to);
   console.log(`fetched ${to.slice(root.length + 1)}`);
+}
+
+async function fetchOk(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}: ${url}`);
+  return res;
 }
 
 /** Extracts the named entries of a zip archive (stored or deflated). */
@@ -91,16 +97,36 @@ function unzip(buf, wanted) {
 }
 
 
-// Piper phonemizer (espeak-ng compiled to wasm). The emscripten glue is not an ES module,
-// so append an export to make it importable from a module worker.
-const piperBuild = join(nm, '@diffusionstudio/piper-wasm/build');
-const glue = await readFile(join(piperBuild, 'piper_phonemize.js'), 'utf8');
-await mkdir(join(pub, 'piper'), { recursive: true });
-await writeFile(join(pub, 'piper/piper_phonemize.mjs'), `${glue}\nexport default createPiperPhonemize;\n`);
-console.log('wrote   public/piper/piper_phonemize.mjs');
-await copy(join(piperBuild, 'piper_phonemize.wasm'), join(pub, 'piper/piper_phonemize.wasm'));
-await copy(join(piperBuild, 'piper_phonemize.data'), join(pub, 'piper/piper_phonemize.data'));
+// Piper phonemizer (piper-phonemize + eSpeak NG compiled to wasm), built from pinned sources by
+// phonemizer/build.sh and published as release assets. A local build in phonemizer/dist/ is used if
+// present; either way every file must match the SHA-256 in phonemizer/release.json. The emscripten
+// glue is not an ES module, so an export is appended to make it importable from a module worker.
+{
+  const release = JSON.parse(await readFile(join(root, 'phonemizer/release.json'), 'utf8'));
+  const local = join(root, 'phonemizer/dist');
+  const useLocal = await exists(join(local, 'piper_phonemize.wasm'));
+  if (skipDownloads && !useLocal) {
+    console.log('skipping phonemizer download');
+  } else {
+    await mkdir(join(pub, 'piper'), { recursive: true });
+    for (const [file, sha256] of Object.entries(release.files)) {
+      const buf = useLocal
+        ? await readFile(join(local, file))
+        : Buffer.from(await (await fetchOk(release.url + file)).arrayBuffer());
+      const actual = createHash('sha256').update(buf).digest('hex');
+      if (actual !== sha256) {
+        throw new Error(`${file} from ${useLocal ? 'phonemizer/dist' : release.url} has SHA-256 ${actual}, ` +
+          `phonemizer/release.json expects ${sha256}`);
+      }
+      const out = file === 'piper_phonemize.js' ? 'piper_phonemize.mjs' : file;
+      await writeFile(join(pub, 'piper', out),
+        out === file ? buf : `${buf.toString('utf8')}\nexport default createPiperPhonemize;\n`);
+      console.log(`${useLocal ? 'built  ' : 'fetched'} public/piper/${out}`);
+    }
+  }
+}
 // The phonemizer contains GPL-3.0-or-later eSpeak NG: serve the license and source pointers with it.
+await mkdir(join(pub, 'piper'), { recursive: true });
 await copy(join(root, 'licenses/GPL-3.0.txt'), join(pub, 'piper/COPYING'));
 await copy(join(root, 'licenses/espeak-ng-SOURCE.txt'), join(pub, 'piper/SOURCE.txt'));
 

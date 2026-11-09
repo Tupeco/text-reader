@@ -1,0 +1,9 @@
+{
+  "url": "https://github.com/Tupeco/text-reader/releases/download/phonemizer-v1/",
+  "files": {
+    "piper_phonemize.js": "fef0c2fc442d24fdef5c7c7cc37d5da2314407640fe11ab1bfe347c723dff19b",
+    "piper_phonemize.wasm": "711930f48c3279133f6cd84332ec1116a33fc94396eac6371db8ff4db7603c55",
+    "piper_phonemize.data": "a9879123581336fc36ae3706ae81c9e67becc388b80b8a4943cef2a78542e6aa",
+    "VERSIONS": "34f517ae00b6ccce2a710daaf3b2e8cc0e0d4b76f90b66a64a5e198c6dcbbdbd"
+  }
+}

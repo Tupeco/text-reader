@@ -50,8 +50,15 @@ npm run build    # production build in dist/
 npm run preview  # serve dist/ with the service worker
 ```
 
-`npm run assets -- --skip-downloads` only copies the runtimes from `node_modules`. Downloaded files are
-gitignored and reused on later runs.
+`npm run assets -- --skip-downloads` skips the downloads. Downloaded files are gitignored and reused on
+later runs.
+
+The Piper phonemizer (piper-phonemize + eSpeak NG compiled to wasm) is built by this project from pinned
+commits, and `npm run assets` downloads it from a GitHub release. To rebuild it (needs Docker), run
+`phonemizer/build.sh`. That writes `phonemizer/dist/` and updates the SHA-256 checksums in
+`phonemizer/release.json`, and `npm run assets` then uses the local build. Upload the files from
+`phonemizer/dist/` to a new release and update the `url` in `release.json` before committing new
+checksums.
 
 ### Deploying
 

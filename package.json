@@ -16,7 +16,6 @@
     "onnxruntime-web": "^1.31.0-dev.20260914-8d85527a0"
   },
   "devDependencies": {
-    "@diffusionstudio/piper-wasm": "^1.0.0",
     "playwright-core": "^1.65.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.6",

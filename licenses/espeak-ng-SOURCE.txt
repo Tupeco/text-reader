@@ -6,16 +6,14 @@ espeak-ng-data, which are licensed under the GNU General Public License, version
 COPYING in this directory). They run as a separate program: the app starts them with command-line
 arguments and reads their output. The rest of Card Reader is MIT-licensed.
 
-The binaries are taken unmodified from the npm package @diffusionstudio/piper-wasm 1.0.0
-(piper_phonemize.mjs is its piper_phonemize.js with one export line appended). Corresponding source:
+They are built by this project from the following exact sources (also listed in VERSIONS here):
 
-  eSpeak NG (Rhasspy fork)       https://github.com/rhasspy/espeak-ng
-  piper-phonemize (wasm fork)    https://github.com/wide-video/piper-phonemize
-  Build steps                    https://github.com/diffusion-studio/piper-wasm (README)
-                                 https://github.com/wide-video/piper-wasm
-  Upstream eSpeak NG             https://github.com/espeak-ng/espeak-ng
-  Upstream piper-phonemize       https://github.com/rhasspy/piper-phonemize (MIT)
+  eSpeak NG (Rhasspy fork)     https://github.com/rhasspy/espeak-ng
+                               commit 0f65aa301e0d6bae5e172cc74197d32a6182200f
+  piper-phonemize (wasm fork)  https://github.com/wide-video/piper-phonemize
+                               commit cfff8e52ebaea37c7e953ae2d06b174acb827ac4
+  Emscripten 3.1.47            https://github.com/emscripten-core/emsdk
+                               commit 37b85e9eaee5be090569d018cca77a15cacc11b7
 
-The published build clones the latest revision of each repository and does not record which
-commits were used. If you need the exact source for these binaries and cannot get it from the
-links above, open an issue in this project's repository.
+Build scripts: phonemizer/Dockerfile and phonemizer/build.sh in https://github.com/Tupeco/text-reader.
+piper_phonemize.mjs is the build's piper_phonemize.js with one export line appended.
