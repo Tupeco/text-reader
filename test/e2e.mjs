@@ -67,6 +67,14 @@ const waitForText = async (selector, minLength, timeout = 300_000) => {
   return page.$eval(selector, (el) => el.value);
 };
 
+/** Page memory incl. workers (Chromium, cross-origin isolated pages only). */
+const memory = async (label) => {
+  const mb = await page
+    .evaluate(() => performance.measureUserAgentSpecificMemory?.().then((m) => Math.round(m.bytes / 1e6)))
+    .catch(() => undefined);
+  if (mb) console.log(`  memory after ${label}: ${mb} MB`);
+};
+
 const statusError = () => page.$eval('#status', (el) => (el.classList.contains('error') && !el.hidden ? el.textContent.trim() : ''));
 
 step('Load and install the service worker');
@@ -88,6 +96,7 @@ if (process.env.E2E_UNTIL === 'ocr') {
   await browser.close();
   process.exit(process.exitCode ?? 0);
 }
+await memory('OCR');
 for (const word of ['Storm Front', 'extra action', 'settlements lose 2 resources']) {
   if (!source.includes(word)) fail(`recognized text is missing "${word}"`);
 }
@@ -101,6 +110,7 @@ await page.click('#retranslate');
 const fi = await waitForText('#target', 20);
 console.log(`  ${((Date.now() - t0) / 1000).toFixed(1)}s:`, JSON.stringify(fi));
 if (!/sankari|myrsky|toiminto|toimin/i.test(fi)) fail('translation does not look Finnish');
+await memory('translation');
 
 step('Read aloud with Piper (Finnish)');
 t0 = Date.now();
@@ -109,6 +119,7 @@ await page.waitForFunction(() => document.querySelector('#speak span').textConte
 await page.waitForFunction(() => document.querySelector('#speak span').textContent === 'Read aloud', null, { timeout: 300_000 });
 console.log(`  finished speaking in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 if (await statusError()) fail(`speech error: ${await statusError()}`);
+await memory('Piper (translator unloaded)');
 
 step('Glare: two shots of the same card are merged');
 await page.click('#photos .photo button[aria-label="Remove photo"]');

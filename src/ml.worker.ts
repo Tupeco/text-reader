@@ -1,5 +1,8 @@
 // Hosts every model (OCR, translation, Piper TTS) in one worker so they share a single
 // onnxruntime-web instance. Jobs run one at a time; ORT's wasm backend is not re-entrant.
+// OCR stays loaded; the translator and the Piper voice are the big ones (hundreds of MB once
+// loaded), so only one of them is kept at a time. wasm memory never shrinks, but memory freed by
+// one model is reused by the next, so the peak is OCR + the larger of the two rather than all three.
 import * as ort from 'onnxruntime-web/wasm';
 import ortWasm from 'onnxruntime-web/ort-wasm-simd-threaded.wasm?url';
 import ortGlue from 'onnxruntime-web/ort-wasm-simd-threaded.mjs?url';
@@ -110,6 +113,7 @@ function loadTranslator(id: number, model: TranslationModel) {
 async function translate(id: number, modelId: string, sentences: string[]): Promise<string[]> {
   const model = catalog.translation.find((m) => m.id === modelId);
   if (!model) throw new Error(`Unknown translation model ${modelId}`);
+  await unloadVoices();
   const t = await loadTranslator(id, model);
   const out: string[] = [];
   for (const [i, s] of sentences.entries()) {
@@ -183,6 +187,7 @@ async function phonemize(id: number, text: string, espeakVoice: string): Promise
 async function speakPiper(id: number, voiceId: string, text: string, rate: number) {
   const voice = catalog.piper.find((v) => v.id === voiceId);
   if (!voice) throw new Error(`Unknown voice ${voiceId}`);
+  await unloadTranslators();
   const { config, session } = await loadVoice(id, voice);
   const ids = await phonemize(id, text, config.espeak.voice);
   const { noise_scale, length_scale, noise_w } = config.inference;
@@ -194,6 +199,22 @@ async function speakPiper(id: number, voiceId: string, text: string, rate: numbe
   if (Object.keys(config.speaker_id_map ?? {}).length) feeds.sid = new ort.Tensor('int64', BigInt64Array.from([0n]));
   const { output } = await session.run(feeds);
   return { pcm: output.data as Float32Array, sampleRate: config.audio.sample_rate };
+}
+
+// ---- unloading ----
+
+async function unloadTranslators() {
+  const all = [...translators.values()];
+  translators.clear();
+  for (const t of all) await (await t.catch(() => undefined))?.dispose();
+}
+
+async function unloadVoices() {
+  const all = [...voices.values()];
+  voices.clear();
+  // The phonemizer keeps the 18 MB espeak data in memory.
+  phonemizer = undefined;
+  for (const v of all) await (await v.catch(() => undefined))?.session.release();
 }
 
 self.onmessage = (e: MessageEvent<Request>) => {
