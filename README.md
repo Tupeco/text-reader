@@ -97,7 +97,9 @@ requests work. Both matter for the in-browser model loader.
 
 #### Online translation (optional)
 
-The on-device model is small, and board game terms trip it up ("Draw 2 cards" → "Piirrä 2 korttia").
+The on-device model is small and has never seen board game jargon. Built-in fixes
+(`src/device-terms.ts`) handle the common cases ("Draw 2 cards" → "Nosta kaksi korttia", not "Piirrä"), but
+its Finnish stays rough.
 The compose stack includes a small translation API (`server/`) that the app uses when it offers an
 engine. The app's Settings → Translation → Engine chooses "Automatic" (the server's first engine when
 online, else the device), "On this device", or a specific engine. If a server engine fails, the device

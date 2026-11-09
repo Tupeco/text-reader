@@ -89,6 +89,13 @@ the on-device model on any failure. The endpoint is public, so `limits.mjs` caps
 characters per day. `test/run-e2e-compose.sh` runs the e2e against the compose stack with a mock DeepL
 (`test/mock-deepl.mjs`, `test/compose.test.yaml`, `E2E_ONLINE=1`).
 
+**On-device wording fixes** (`src/device-terms.ts`): the small Opus-MT model mistranslates board game jargon
+consistently (draw → "piirrä", deck → "kansi", "roll the die" → dying). `beforeDevice` rephrases the English,
+`afterDevice` fixes the Finnish keeping case endings (JS `\b` is ASCII-only: use letter lookarounds for
+Finnish). Only for the on-device engine. `src/device-terms.model.test.ts` runs the real q8 model in Node
+(skipped until `npm run assets`) and pins 32 translations: when a rule or the model changes, check the new
+Finnish by eye before updating the expectations.
+
 **Text pipeline** (main thread, `src/main.ts` orchestrates):
 - photo → `image.ts` (loading, glare detection, optional lighting flattening) → worker OCR
 - → `layout.ts` (OCR boxes → reading-order rows/paragraphs)

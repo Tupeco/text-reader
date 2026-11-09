@@ -7,6 +7,7 @@ import { recognize, setKeepModelsLoaded, translateSentences, warmupOcr } from '.
 import { downloadPack, isReady, packStatus, registerServiceWorker, removePack, storageEstimate } from './offline';
 import { load, save, type Settings } from './settings';
 import * as speech from './speech';
+import { afterDevice, beforeDevice } from './device-terms';
 import { mergeShots } from './merge';
 import { serverEngines, translateOnline, type ServerEngine } from './online';
 import { applyGlossary, cleanOcrText, linesToText, parseGlossary, splitSentences, type OcrLine } from './text';
@@ -295,7 +296,10 @@ async function translate() {
     }
   }
   if (translated === undefined) {
-    const out = await translateSentences(model.id, paragraphs.flat(), (label, f) => showStatus(label, f));
+    // Built-in board game wording fixes for the small on-device model (src/device-terms.ts).
+    const pair = `${model.source}-${model.target}`;
+    const input = paragraphs.flat().map((sentence) => beforeDevice(pair, sentence));
+    const out = (await translateSentences(model.id, input, (label, f) => showStatus(label, f))).map((t) => afterDevice(pair, t));
     let k = 0;
     translated = paragraphs.map((p) => p.map(() => out[k++]).join(' ')).join('\n\n');
   }
